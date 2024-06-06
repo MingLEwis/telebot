@@ -1,3 +1,4 @@
+app.run()
 from telegram import Update, ChatPermissions, BotCommand
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 from telegram.error import BadRequest
