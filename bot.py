@@ -1,11 +1,13 @@
 app.run()
-from telegram import Update, ChatPermissions, BotCommand
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+from telegram import Update, ChatPermissions, BotCommand, Bot
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackContext, ContextTypes, MessageHandler
 from telegram.error import BadRequest
+from telegram.helpers import mention_html
 import logging
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+import re
 
 logging.basicConfig(level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -17,12 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 # Hàm khởi tạo lệnh /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(
-        'Xin chào! Tôi là Tiểu Ming, rất vui được làm quen.'
-    )
+async def start(update, context):
+    user = update.message.from_user
+    username = user.username if user.username else "Không có username"
+    await update.message.reply_text(f'Chào @{username}, tôi là bot Tiểu Ming rất vui được làm quen!')
 
-async def banudid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def banudid(update, context):
     await update.message.reply_text(
         'Thuật ngữ “ban udid” và “unban” xuất hiện khoảng hơn một năm trước, nhưng trở nên phổ biến khoảng hai năm nay.\n'
         'Chứng chỉ miễn phí là chứng chỉ doanh nghiệp, có thể bị rò rỉ hoặc mua từ chợ đen. Khi sử dụng, không cung cấp thông tin gì đến máy chủ Apple nên không bị cấm, chỉ khi thu hồi quá nhiều thì bị BLACKLIST.\n'
@@ -44,7 +46,7 @@ def get_news():
 
     return list_news
 
-async def news(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def news(update, context):
     data = get_news()
     for item in data:
         await update.message.reply_html(item["title"])
@@ -56,7 +58,7 @@ async def is_admin(update: Update, user_id: int) -> bool:
     return member.status in ['administrator', 'creator']
 
 # Hàm thực thi lệnh mute
-async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def mute(update, context):
     user = update.effective_user
     if not await is_admin(update, user.id):
         await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
@@ -73,46 +75,65 @@ async def mute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 user_id,
                 permissions=ChatPermissions(can_send_messages=False)
             )
-            await update.message.reply_text(f'Đã tắt tiếng thành viên @{username}.')
+            await update.message.reply_text(f'Đã tắt tiếng thành viên @{username}.\nID: {user_id}')
         except BadRequest as e:
             await update.message.reply_text(f'Không thể tắt tiếng thành viên: {e.message}')
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn tắt tiếng.')
 
 # Hàm thực thi lệnh unmute
-async def unmute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+def extract_username(text):
+        username_regex = r"@(\w+)"
+        match = re.search(username_regex, text)
+        if match:
+            return match.group(1)
+        return None
+
+async def unmute(update, context):
     user = update.effective_user
     if not await is_admin(update, user.id):
         await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
         return
+    
+    message_text = update.message.text
+    username = extract_username(message_text)
+    if username is None:
+        await update.message.reply_text("Vui lòng cung cấp @username.")
+        return
+    
+    chat_id = update.message.chat_id
+    try:
+        members = await context.bot.get_chat_administrators(chat_id)
+        user_id = None
+        for member in members:
+            if member.user.username.lower() == username.lower():
+                user_id = member.user.id
+                break
 
-    if update.message.reply_to_message:
-        target_user = update.message.reply_to_message.from_user
-        user_id = target_user.id
-        username = target_user.username
-        chat_id = update.message.chat_id
-        try:
-            await context.bot.restrict_chat_member(
-                chat_id,
-                user_id,
-                permissions=ChatPermissions(
-                    can_send_messages=True,
-                    can_send_media_messages=True,
-                    can_send_polls=True,
-                    can_send_other_messages=True,
-                    can_add_web_page_previews=True,
-                    can_change_info=True,
-                    can_invite_users=True,
-                    can_pin_messages=True)
+        if user_id is None:
+            await update.message.reply_text("Không tìm thấy username.")
+            return
+        
+        await context.bot.restrict_chat_member(
+            chat_id=chat_id,
+            user_id=user_id,
+            permissions=ChatPermissions(
+                can_send_messages=True,
+                can_send_media_messages=True,
+                can_send_polls=True,
+                can_send_other_messages=True,
+                can_add_web_page_previews=True,
+                can_change_info=False,
+                can_invite_users=True,
+                can_pin_messages=False
             )
-            await update.message.reply_text(f'Đã bật tiếng thành viên @{username}.')
-        except BadRequest as e:
-            await update.message.reply_text(f'Không thể bật tiếng thành viên: {e.message}')
-    else:
-        await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn bật tiếng.')
+        )
+        await update.message.reply_text(f'Đã bỏ mute cho @{username}')
+    except Exception as e:
+        await update.message.reply_text(f'Lỗi: {e}')
 
 # Hàm thực thi lệnh ban
-async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def ban(update, context):
     user = update.effective_user
     if not await is_admin(update, user.id):
         await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
@@ -133,7 +154,7 @@ async def ban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
 
 # Hàm thực thi lệnh unban
-async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def unban(update, context):
     user = update.effective_user
     if not await is_admin(update, user.id):
         await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
@@ -152,47 +173,35 @@ async def unban(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn bỏ cấm.')
 
-def main() -> None:
-
-    application = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
-
-    # Đăng ký các lệnh với Application
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("mute", mute))
-    application.add_handler(CommandHandler("unmute", unmute))
-    application.add_handler(CommandHandler("ban", ban))
-    application.add_handler(CommandHandler("unban", unban))
-    application.add_handler(CommandHandler("news", news))
-    application.add_handler(CommandHandler("banudid", banudid))
-
-    # Đặt các lệnh cho bot
-    application.bot.set_my_commands([
+async def set_commands(application):
+    await application.bot.set_my_commands([
         BotCommand("start", "Bắt đầu sử dụng bot."),
+        BotCommand("news", "Tin tức mới."),
         BotCommand("mute", "Tắt tiếng thành viên."),
         BotCommand("unmute", "Bật tiếng thành viên."),
         BotCommand("ban", "Cấm thành viên."),
         BotCommand("unban", "Bỏ cấm thành viên.")
     ])
+    
+def main() -> None:
 
-    application.run_polling()
+    app = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
+
+    # Đăng ký lệnh
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("mute", mute))
+    app.add_handler(CommandHandler("unmute", unmute))
+    app.add_handler(CommandHandler("ban", ban))
+    app.add_handler(CommandHandler("unban", unban))
+    app.add_handler(CommandHandler("news", news))
+    app.add_handler(CommandHandler("banudid", banudid))
+
+    app.run_polling()
+
+    app.start()
+    app.updater.start_polling()
+    app.updater.idle()
 
 if __name__ == '__main__':
-    main()
-
-def main():
-    logger.info('Chương trình bắt đầu')
-    try:
-        # Ví dụ về các hành động trong chương trình
-        x = 10
-        y = 0
-        logger.debug(f'Thực hiện phép chia: {x} / {y}')
-        result = x / y
-    except ZeroDivisionError as e:
-        logger.error(f'Xảy ra lỗi: {e}')
-    else:
-        logger.info(f'Kết quả: {result}')
-    finally:
-        logger.info('Chương trình kết thúc')
-
-if __name__ == '__main__':
-    main()
+    import asyncio
+    asyncio.run(main())
