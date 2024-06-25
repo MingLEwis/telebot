@@ -26,7 +26,7 @@ async def start(update, context):
 
 async def banudid(update, context):
     await update.message.reply_text(
-        'Thuật ngữ “ban udid” và “unban” xuất hiện khoảng hơn một năm trước, nhưng trở nên phổ biến khoảng hai năm nay.\n'
+        'Thuật ngữ “ban udid” và “unban” xuất hiện vào khoảng năm 2020, nhưng trở nên phổ biến hơn gần đây.\n'
         'Chứng chỉ miễn phí là chứng chỉ doanh nghiệp, có thể bị rò rỉ hoặc mua từ chợ đen. Khi sử dụng, không cung cấp thông tin gì đến máy chủ Apple nên không bị cấm, chỉ khi thu hồi quá nhiều thì bị BLACKLIST.\n'
         'Nếu dùng chứng chỉ cá nhân bị Apple thu hồi, sẽ không bị cấm nhưng thời gian duyệt UDID có thể kéo dài 14-30 ngày.'
     )
@@ -37,10 +37,10 @@ def get_news():
     soup = BeautifulSoup(r.text, 'html.parser')
     mydivs = soup.find_all("h3", {"class": "title-news"})
 
-    for new in mydivs[:5]:
+    for index, new in enumerate(mydivs[:7], start=1):
         newdict = {}
         link = urljoin("https://vnexpress.net/", new.a.get('href'))
-        title_with_link = f'<a href="{link}">{new.a.get("title")}</a>'
+        title_with_link = f'{index}. <a href="{link}">{new.a.get("title")}</a>'
         newdict["title"] = title_with_link
         list_news.append(newdict)
 
@@ -48,14 +48,66 @@ def get_news():
 
 async def news(update, context):
     data = get_news()
-    for item in data:
-        await update.message.reply_html(item["title"])
+    news_message = "\n".join([item["title"] for item in data])
+    await update.message.reply_html(news_message, disable_web_page_preview=True)
 
 # Hàm kiểm tra quyền admin
 async def is_admin(update: Update, user_id: int) -> bool:
     chat_id = update.effective_chat.id
     member = await update.effective_chat.get_member(user_id)
     return member.status in ['administrator', 'creator']
+
+# Hàm lấy thông tin thời tiết
+def get_tt(location):
+    api_key = "cae6fb4316e5d6d4516db4ddce333193" 
+    base_url = "http://api.openweathermap.org/data/2.5/weather?"
+    complete_url = base_url + "q=" + location + "&appid=" + api_key + "&units=metric&lang=vi"
+    response = requests.get(complete_url)
+    return response.json()
+
+def get_city_name(code):
+    cities = {
+        "hcm": "Ho Chi Minh City",
+        "hn": "Ha Noi",
+        "dn": "Da Nang",
+        "ct": "Can Tho",
+        "hp": "Hai Phong",
+        "vt": "Vung Tau",
+        "dl": "Da Lat",
+        "bd": "Binh Duong",
+        "nt": "Nha Trang",
+        "dt": "Dong Thap",
+        "pt": "Phan Thiet"
+    }
+    return cities.get(code.lower(), code)
+
+async def weather(update, context):
+    location_code = " ".join(context.args)
+    if not location_code:
+        await update.message.reply_text("Vui lòng cung cấp mã vùng hoặc tên thành phố. Ví dụ: /tt hcm")
+        return
+
+    location = get_city_name(location_code)
+    weather_data = get_tt(location)
+    if weather_data["cod"] != "404":
+        main = weather_data["main"]
+        weather = weather_data["weather"][0]
+        temperature = main["temp"]
+        pressure = main["pressure"]
+        humidity = main["humidity"]
+        weather_description = weather["description"]
+
+        weather_message = (
+            f"Thời tiết tại {location}:\n"
+            f"Nhiệt độ: {temperature}°C\n"
+            f"Áp suất: {pressure} hPa\n"
+            f"Độ ẩm: {humidity}%\n"
+            f"Mô tả: {weather_description.capitalize()}"
+        )
+    else:
+        weather_message = f"Không tìm thấy thông tin thời tiết cho địa điểm: {location}"
+
+    await update.message.reply_text(weather_message)
 
 # Hàm thực thi lệnh mute
 async def mute(update, context):
@@ -83,37 +135,42 @@ async def mute(update, context):
 
 # Hàm thực thi lệnh unmute
 def extract_username(text):
-        username_regex = r"@(\w+)"
-        match = re.search(username_regex, text)
-        if match:
-            return match.group(1)
-        return None
+    username_regex = r"@(\w+)"
+    match = re.search(username_regex, text)
+    if match:
+        return match.group(1)
+    return None
 
 async def unmute(update, context):
     user = update.effective_user
     if not await is_admin(update, user.id):
         await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
         return
-    
-    message_text = update.message.text
-    username = extract_username(message_text)
-    if username is None:
-        await update.message.reply_text("Vui lòng cung cấp @username.")
-        return
-    
-    chat_id = update.message.chat_id
-    try:
-        members = await context.bot.get_chat_administrators(chat_id)
-        user_id = None
-        for member in members:
-            if member.user.username.lower() == username.lower():
-                user_id = member.user.id
-                break
 
-        if user_id is None:
-            await update.message.reply_text("Không tìm thấy username.")
-            return
-        
+    chat_id = update.message.chat_id
+    target_user = None
+    user_id = None
+
+    if update.message.reply_to_message:
+        target_user = update.message.reply_to_message.from_user
+    else:
+        message_text = update.message.text
+        username = extract_username(message_text)
+        if username:
+            members = await context.bot.get_chat_members(chat_id)
+            for member in members:
+                if member.user.username.lower() == username.lower():
+                    target_user = member.user
+                    break
+
+    if target_user:
+        user_id = target_user.id
+        username = target_user.username
+    else:
+        await update.message.reply_text("Vui lòng trả lời tin nhắn của thành viên bạn muốn bật tiếng hoặc cung cấp @username hợp lệ.")
+        return
+
+    try:
         await context.bot.restrict_chat_member(
             chat_id=chat_id,
             user_id=user_id,
@@ -123,12 +180,12 @@ async def unmute(update, context):
                 can_send_polls=True,
                 can_send_other_messages=True,
                 can_add_web_page_previews=True,
-                can_change_info=False,
+                can_change_info=True,
                 can_invite_users=True,
-                can_pin_messages=False
+                can_pin_messages=True
             )
         )
-        await update.message.reply_text(f'Đã bỏ mute cho @{username}')
+        await update.message.reply_text(f'Đã bỏ tắt tiếng thành viên @{username}')
     except Exception as e:
         await update.message.reply_text(f'Lỗi: {e}')
 
@@ -175,12 +232,14 @@ async def unban(update, context):
 
 async def set_commands(application):
     await application.bot.set_my_commands([
-        BotCommand("start", "Bắt đầu sử dụng bot."),
+        BotCommand("start", "Bắt đầu sử dụng."),
         BotCommand("news", "Tin tức mới."),
+        BotCommand("tt", "Thời tiết."),
         BotCommand("mute", "Tắt tiếng thành viên."),
         BotCommand("unmute", "Bật tiếng thành viên."),
         BotCommand("ban", "Cấm thành viên."),
-        BotCommand("unban", "Bỏ cấm thành viên.")
+        BotCommand("unban", "Bỏ cấm thành viên."),
+        BotCommand("banudid", "Blacklist iOS.")
     ])
     
 def main() -> None:
@@ -194,6 +253,7 @@ def main() -> None:
     app.add_handler(CommandHandler("ban", ban))
     app.add_handler(CommandHandler("unban", unban))
     app.add_handler(CommandHandler("news", news))
+    app.add_handler(CommandHandler("tt", weather))
     app.add_handler(CommandHandler("banudid", banudid))
 
     app.run_polling()
