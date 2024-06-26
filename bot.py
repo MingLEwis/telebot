@@ -15,6 +15,8 @@ from urllib.parse import urljoin
 import re
 import os
 
+nest_asyncio.apply()
+
 logging.basicConfig(
     level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -267,9 +269,9 @@ async def main():
     application.add_handler(CommandHandler("unban", unban))
     application.add_handler(CommandHandler("blacklist", blacklist))
 
-    await set_commands(application)
+    await application.run_polling()
 
-  if __name__ == '__main__':
+if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     if loop.is_running():
         nest_asyncio.apply()
