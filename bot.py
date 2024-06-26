@@ -257,9 +257,8 @@ async def set_commands(application):
         BotCommand("blacklist", "Blacklist iOS."),
     ])
 
-
-def main() -> None:
-    app = ApplicationBuilder().token("your_token_here").build()
+async def main() -> None:
+    app = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
 
     # Đăng ký lệnh
     app.add_handler(CommandHandler("start", start))
@@ -276,7 +275,6 @@ def main() -> None:
     app.run_polling()
     app.updater.start_polling()
     app.updater.idle()
-
 
 if __name__ == '__main__':
     import asyncio
