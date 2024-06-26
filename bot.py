@@ -249,7 +249,7 @@ async def set_commands(application):
     await application.bot.set_my_commands([
         BotCommand("start", "Bắt đầu sử dụng."),
         BotCommand("news", "Tin tức mới."),
-        BotCommand("weather", "Thời tiết."),
+        BotCommand("tt", "Thời tiết."),
         BotCommand("mute", "Tắt tiếng thành viên."),
         BotCommand("unmute", "Bật tiếng thành viên."),
         BotCommand("ban", "Cấm thành viên."),
@@ -262,7 +262,7 @@ async def main():
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("news", news))
-    application.add_handler(CommandHandler("weather", weather))
+    application.add_handler(CommandHandler("tt", weather))
     application.add_handler(CommandHandler("mute", mute))
     application.add_handler(CommandHandler("unmute", unmute))
     application.add_handler(CommandHandler("ban", ban))
