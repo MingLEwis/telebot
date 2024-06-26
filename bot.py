@@ -1,12 +1,19 @@
-from telegram.ext import CommandHandler, CallbackContext, MessageHandler
-from telegram import Update, ChatPermissions, BotCommand, Bot
-from telegram.ext import ApplicationBuilder
+import asyncio
+import nest_asyncio
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+    CallbackContext,
+)
+from telegram import Update, ChatPermissions, BotCommand
 from telegram.error import BadRequest
 import logging
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
+import os
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -18,13 +25,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def start(update, context):
+async def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     username = user.username if user.username else "Không có username"
     await update.message.reply_text(f'Hi @{username}, tôi là bot Tiểu Ming rất vui được làm quen!')
 
 
-async def blacklist(update, context):
+async def blacklist(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(
         'Thuật ngữ “ban udid” và “unban” xuất hiện vào khoảng năm 2020, nhưng trở nên phổ biến hơn gần đây.\n'
         'Chứng chỉ miễn phí là chứng chỉ doanh nghiệp, có thể bị rò rỉ hoặc mua từ chợ đen. Khi sử dụng, không cung cấp thông tin gì đến máy chủ Apple nên không bị cấm, chỉ khi thu hồi quá nhiều thì bị BLACKLIST.\n'
@@ -48,7 +55,7 @@ def get_news():
     return list_news
 
 
-async def news(update, context):
+async def news(update: Update, context: CallbackContext) -> None:
     data = get_news()
     news_message = "\n".join([item["title"] for item in data])
     await update.message.reply_html(news_message, disable_web_page_preview=True)
@@ -84,7 +91,7 @@ def get_city_name(code):
     return cities.get(code.lower(), code)
 
 
-async def weather(update, context):
+async def weather(update: Update, context: CallbackContext) -> None:
     location_code = " ".join(context.args)
     if not location_code:
         await update.message.reply_text("Vui lòng cung cấp mã vùng hoặc tên thành phố.")
@@ -113,7 +120,7 @@ async def weather(update, context):
     await update.message.reply_text(weather_message)
 
 
-async def mute(update, context):
+async def mute(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
         await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
@@ -145,7 +152,7 @@ def extract_username(text):
     return None
 
 
-async def unmute(update, context):
+async def unmute(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
         await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
@@ -196,7 +203,7 @@ async def unmute(update, context):
         await update.message.reply_text(f'Lỗi: {e}')
 
 
-async def ban(update, context):
+async def ban(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
         await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
@@ -216,7 +223,7 @@ async def ban(update, context):
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn cấm.')
 
 
-async def unban(update, context):
+async def unban(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
         await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
@@ -262,13 +269,10 @@ async def main():
 
     await set_commands(application)
 
-    # Sử dụng loop hiện tại nếu đang chạy
-    if hasattr(asyncio, 'get_running_loop') and asyncio.get_running_loop():
-        await application.run_polling()
+  if __name__ == '__main__':
+    loop = asyncio.get_event_loop()
+    if loop.is_running():
+        nest_asyncio.apply()
+        loop.create_task(main())
     else:
-        await application.run_polling()
-
-if __name__ == "__main__":
-    import asyncio
-    asyncio.run(main())
-
+        loop.run_until_complete(main())
