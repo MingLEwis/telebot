@@ -1,4 +1,4 @@
-from telegram import Update, ChatPermissions, BotCommand
+from telegram import Update, ChatPermissions, BotCommand, Bot
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackContext, ContextTypes, MessageHandler
 from telegram.error import BadRequest
 from telegram.helpers import mention_html
@@ -8,6 +8,18 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
 import os
+import pytest
+from bot import start
+
+@pytest.mark.asyncio
+async def test_start():
+    # Tạo mock update và context
+    update = Update(update_id=123, message=None)  # Thay thế None bằng đối tượng Message nếu cần thiết
+    context = CallbackContext(dispatcher=None)
+
+    # Gọi hàm start và kiểm tra kết quả
+    await start(update, context)
+    assert True
 
 logging.basicConfig(level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -16,6 +28,7 @@ logging.basicConfig(level=logging.DEBUG,
 )
 
 logger = logging.getLogger(__name__)
+
 
 # Hàm khởi tạo lệnh /start
 async def start(update, context):
@@ -206,6 +219,7 @@ async def ban(update, context):
             await update.message.reply_text(f'Không thể cấm thành viên: {e.message}')
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn cấm.')
+    
 
 # Hàm thực thi lệnh unban
 async def unban(update, context):
@@ -227,6 +241,7 @@ async def unban(update, context):
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn bỏ cấm.')
 
+
 async def set_commands(application):
     await application.bot.set_my_commands([
         BotCommand("start", "Bắt đầu sử dụng."),
@@ -238,9 +253,9 @@ async def set_commands(application):
         BotCommand("unban", "Bỏ cấm thành viên."),
         BotCommand("blacklist", "Blacklist iOS."),
     ])
-
-async def main() -> None:
-    app = ApplicationBuilder().token("YOUR_TELEGRAM_BOT_TOKEN").build()
+    
+def main() -> None:
+    app = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
 
     # Đăng ký lệnh
     app.add_handler(CommandHandler("start", start))
@@ -252,8 +267,11 @@ async def main() -> None:
     app.add_handler(CommandHandler("tt", weather))
     app.add_handler(CommandHandler("blacklist", blacklist))
 
-    await set_commands(app)
-    await app.run_polling()
+    app.run_polling()
+
+    app.start()
+    app.updater.start_polling()
+    app.updater.idle()
 
 if __name__ == '__main__':
     import asyncio
