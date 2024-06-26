@@ -27,13 +27,12 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-
+# Hàm start
 async def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     username = user.username if user.username else "Không có username"
     await update.message.reply_text(f'Hi @{username}, tôi là bot Tiểu Ming rất vui được làm quen!')
-
-
+# Hàm blacklist
 async def blacklist(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(
         'Thuật ngữ “ban udid” và “unban” xuất hiện vào khoảng năm 2020, nhưng trở nên phổ biến hơn gần đây.\n'
@@ -41,7 +40,7 @@ async def blacklist(update: Update, context: CallbackContext) -> None:
         'Nếu dùng chứng chỉ cá nhân bị Apple thu hồi, sẽ không bị cấm nhưng thời gian duyệt UDID có thể kéo dài 14-30 ngày.'
     )
 
-
+# Hàm lấy tin tức
 def get_news():
     list_news = []
     r = requests.get("https://vnexpress.net/")
@@ -57,30 +56,30 @@ def get_news():
 
     return list_news
 
-
 async def news(update: Update, context: CallbackContext) -> None:
     data = get_news()
     news_message = "\n".join([item["title"] for item in data])
     await update.message.reply_html(news_message, disable_web_page_preview=True)
 
-
+# Hàm kiểm tra admin
 async def is_admin(update: Update, user_id: int) -> bool:
     chat_id = update.effective_chat.id
     member = await update.effective_chat.get_member(user_id)
     return member.status in ['administrator', 'creator']
 
+# Hàm random
 async def random_keyword(update: Update, context: CallbackContext) -> None:
     question = update.message.text.split("/random", 1)[1].strip()
 
     keywords = [keyword.strip() for keyword in question.split(",")]
 
-    if keywords:
+    if len(keywords) >= 2:
         selected_keyword = random.choice(keywords)
-        await update.message.reply_text(f'Chúc mừng bạn đã quay vào: {selected_keyword}')
+        await update.message.reply_text(f'Kết quả random: {selected_keyword}')
     else:
-        await update.message.reply_text('Không tìm thấy từ khóa nào trong câu hỏi của bạn.')
+        await update.message.reply_text('Vui lòng thêm ít nhất 2 từ khoá.')
 
-
+# Hàm lấy thông tin thời tiết
 def get_tt(location):
     api_key = "ca22122a90b399f9e1911fcb43763abd" 
     base_url = "http://api.openweathermap.org/data/2.5/weather?"
@@ -131,7 +130,7 @@ async def weather(update: Update, context: CallbackContext) -> None:
 
     await update.message.reply_text(weather_message)
 
-
+# Hàm mute
 async def mute(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
@@ -163,7 +162,7 @@ def extract_username(text):
         return match.group(1)
     return None
 
-
+# Hàm unmute
 async def unmute(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
@@ -214,7 +213,7 @@ async def unmute(update: Update, context: CallbackContext) -> None:
     except Exception as e:
         await update.message.reply_text(f'Lỗi: {e}')
 
-
+# Hàm ban
 async def ban(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
@@ -234,7 +233,7 @@ async def ban(update: Update, context: CallbackContext) -> None:
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn cấm.')
 
-
+# Hàm unban
 async def unban(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
@@ -254,7 +253,7 @@ async def unban(update: Update, context: CallbackContext) -> None:
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn bỏ cấm.')
 
-
+# Hàm tạo lệnh
 async def set_commands(application):
     await application.bot.set_my_commands([
         BotCommand("start", "Bắt đầu sử dụng."),
@@ -270,7 +269,7 @@ async def set_commands(application):
 
 async def main():
     application = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
-
+# Hàm đăng ký lệnh
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("news", news))
     application.add_handler(CommandHandler("tt", weather))
