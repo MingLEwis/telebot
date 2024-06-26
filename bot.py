@@ -1,14 +1,12 @@
-from telegram.ext import CommandHandler, CallbackContext, MessageHandler, filters
+from telegram.ext import CommandHandler, CallbackContext, MessageHandler
 from telegram import Update, ChatPermissions, BotCommand, Bot
 from telegram.ext import ApplicationBuilder
 from telegram.error import BadRequest
-from telegram.helpers import mention_html
 import logging
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
-import os
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -20,7 +18,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-# Hàm khởi tạo lệnh /start
 async def start(update, context):
     user = update.message.from_user
     username = user.username if user.username else "Không có username"
@@ -57,16 +54,14 @@ async def news(update, context):
     await update.message.reply_html(news_message, disable_web_page_preview=True)
 
 
-# Hàm kiểm tra quyền admin
 async def is_admin(update: Update, user_id: int) -> bool:
     chat_id = update.effective_chat.id
     member = await update.effective_chat.get_member(user_id)
     return member.status in ['administrator', 'creator']
 
 
-# Hàm lấy thông tin thời tiết
 def get_tt(location):
-    api_key = "your_api_key_here"  # Thay bằng API key của bạn từ OpenWeatherMap
+    api_key = "cae6fb4316e5d6d4516db4ddce333193"
     base_url = "http://api.openweathermap.org/data/2.5/weather?"
     complete_url = base_url + "q=" + location + "&appid=" + api_key + "&units=metric&lang=vi"
     response = requests.get(complete_url)
@@ -118,7 +113,6 @@ async def weather(update, context):
     await update.message.reply_text(weather_message)
 
 
-# Hàm thực thi lệnh mute
 async def mute(update, context):
     user = update.effective_user
     if not await is_admin(update, user.id):
@@ -143,7 +137,6 @@ async def mute(update, context):
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn tắt tiếng.')
 
 
-# Hàm thực thi lệnh unmute
 def extract_username(text):
     username_regex = r"@(\w+)"
     match = re.search(username_regex, text)
@@ -203,7 +196,6 @@ async def unmute(update, context):
         await update.message.reply_text(f'Lỗi: {e}')
 
 
-# Hàm thực thi lệnh ban
 async def ban(update, context):
     user = update.effective_user
     if not await is_admin(update, user.id):
@@ -224,7 +216,6 @@ async def ban(update, context):
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn cấm.')
 
 
-# Hàm thực thi lệnh unban
 async def unban(update, context):
     user = update.effective_user
     if not await is_admin(update, user.id):
@@ -245,25 +236,39 @@ async def unban(update, context):
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn bỏ cấm.')
 
 
-# Hàm chính để chạy bot
+async def set_commands(application):
+    await application.bot.set_my_commands([
+        BotCommand("start", "Bắt đầu sử dụng."),
+        BotCommand("news", "Tin tức mới."),
+        BotCommand("weather", "Thời tiết."),
+        BotCommand("mute", "Tắt tiếng thành viên."),
+        BotCommand("unmute", "Bật tiếng thành viên."),
+        BotCommand("ban", "Cấm thành viên."),
+        BotCommand("unban", "Bỏ cấm thành viên."),
+        BotCommand("blacklist", "Thông tin về blacklist UDID."),
+    ])
+
 async def main():
-    application = ApplicationBuilder().token('7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c').build()
+    application = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
 
-    application.add_handler(CommandHandler('start', start))
-    application.add_handler(CommandHandler('blacklist', blacklist))
-    application.add_handler(CommandHandler('news', news))
-    application.add_handler(CommandHandler('weather', weather))
-    application.add_handler(CommandHandler('mute', mute))
-    application.add_handler(CommandHandler('unmute', unmute))
-    application.add_handler(CommandHandler('ban', ban))
-    application.add_handler(CommandHandler('unban', unban))
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("news", news))
+    application.add_handler(CommandHandler("weather", weather))
+    application.add_handler(CommandHandler("mute", mute))
+    application.add_handler(CommandHandler("unmute", unmute))
+    application.add_handler(CommandHandler("ban", ban))
+    application.add_handler(CommandHandler("unban", unban))
+    application.add_handler(CommandHandler("blacklist", blacklist))
 
-    await application.run_polling()
+    await set_commands(application)
 
+    # Sử dụng loop hiện tại nếu đang chạy
+    if hasattr(asyncio, 'get_running_loop') and asyncio.get_running_loop():
+        await application.run_polling()
+    else:
+        await application.run_polling()
 
-# Chạy bot mà không sử dụng asyncio.run để tránh lỗi vòng lặp sự kiện đã chạy
-if __name__ == '__main__':
+if __name__ == "__main__":
     import asyncio
+    asyncio.run(main())
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main())
