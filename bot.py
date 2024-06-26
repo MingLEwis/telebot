@@ -1,16 +1,17 @@
-from telegram import Update, ChatPermissions, BotCommand, Bot
-from telegram.ext import CallbackContext
-from telegram.ext import ApplicationBuilder, CallbackContext, ContextTypes, MessageHandler
+from telegram import Update, ChatPermissions, BotCommand
+from telegram.ext import CommandHandler, CallbackContext, MessageHandler, Filters
 from telegram.error import BadRequest
 from telegram.helpers import mention_html
+from telegram.ext import ApplicationBuilder
+
 import logging
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
-import os
 
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     filename='app.log',
     filemode='a'
@@ -25,12 +26,14 @@ async def start(update, context):
     username = user.username if user.username else "Không có username"
     await update.message.reply_text(f'Hi @{username}, tôi là bot Tiểu Ming rất vui được làm quen!')
 
+
 async def blacklist(update, context):
     await update.message.reply_text(
         'Thuật ngữ “ban udid” và “unban” xuất hiện vào khoảng năm 2020, nhưng trở nên phổ biến hơn gần đây.\n'
         'Chứng chỉ miễn phí là chứng chỉ doanh nghiệp, có thể bị rò rỉ hoặc mua từ chợ đen. Khi sử dụng, không cung cấp thông tin gì đến máy chủ Apple nên không bị cấm, chỉ khi thu hồi quá nhiều thì bị BLACKLIST.\n'
         'Nếu dùng chứng chỉ cá nhân bị Apple thu hồi, sẽ không bị cấm nhưng thời gian duyệt UDID có thể kéo dài 14-30 ngày.'
     )
+
 
 def get_news():
     list_news = []
@@ -47,10 +50,12 @@ def get_news():
 
     return list_news
 
+
 async def news(update, context):
     data = get_news()
     news_message = "\n".join([item["title"] for item in data])
     await update.message.reply_html(news_message, disable_web_page_preview=True)
+
 
 # Hàm kiểm tra quyền admin
 async def is_admin(update: Update, user_id: int) -> bool:
@@ -58,13 +63,15 @@ async def is_admin(update: Update, user_id: int) -> bool:
     member = await update.effective_chat.get_member(user_id)
     return member.status in ['administrator', 'creator']
 
+
 # Hàm lấy thông tin thời tiết
 def get_tt(location):
-    api_key = "cae6fb4316e5d6d4516db4ddce333193" 
+    api_key = "your_api_key_here"  # Thay bằng API key của bạn từ OpenWeatherMap
     base_url = "http://api.openweathermap.org/data/2.5/weather?"
     complete_url = base_url + "q=" + location + "&appid=" + api_key + "&units=metric&lang=vi"
     response = requests.get(complete_url)
     return response.json()
+
 
 def get_city_name(code):
     cities = {
@@ -80,6 +87,7 @@ def get_city_name(code):
         "pt": "Phan Thiet",
     }
     return cities.get(code.lower(), code)
+
 
 async def weather(update, context):
     location_code = " ".join(context.args)
@@ -109,6 +117,7 @@ async def weather(update, context):
 
     await update.message.reply_text(weather_message)
 
+
 # Hàm thực thi lệnh mute
 async def mute(update, context):
     user = update.effective_user
@@ -133,6 +142,7 @@ async def mute(update, context):
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn tắt tiếng.')
 
+
 # Hàm thực thi lệnh unmute
 def extract_username(text):
     username_regex = r"@(\w+)"
@@ -140,6 +150,7 @@ def extract_username(text):
     if match:
         return match.group(1)
     return None
+
 
 async def unmute(update, context):
     user = update.effective_user
@@ -167,7 +178,9 @@ async def unmute(update, context):
         user_id = target_user.id
         username = target_user.username
     else:
-        await update.message.reply_text("Vui lòng trả lời tin nhắn của thành viên bạn muốn bật tiếng hoặc cung cấp @username hợp lệ.")
+        await update.message.reply_text(
+            "Vui lòng trả lời tin nhắn của thành viên bạn muốn bật tiếng hoặc cung cấp @username hợp lệ."
+        )
         return
 
     try:
@@ -189,6 +202,7 @@ async def unmute(update, context):
     except Exception as e:
         await update.message.reply_text(f'Lỗi: {e}')
 
+
 # Hàm thực thi lệnh ban
 async def ban(update, context):
     user = update.effective_user
@@ -208,7 +222,7 @@ async def ban(update, context):
             await update.message.reply_text(f'Không thể cấm thành viên: {e.message}')
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn cấm.')
-    
+
 
 # Hàm thực thi lệnh unban
 async def unban(update, context):
@@ -242,9 +256,10 @@ async def set_commands(application):
         BotCommand("unban", "Bỏ cấm thành viên."),
         BotCommand("blacklist", "Blacklist iOS."),
     ])
-    
+
+
 def main() -> None:
-    app = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
+    app = ApplicationBuilder().token("your_token_here").build()
 
     # Đăng ký lệnh
     app.add_handler(CommandHandler("start", start))
@@ -256,11 +271,12 @@ def main() -> None:
     app.add_handler(CommandHandler("tt", weather))
     app.add_handler(CommandHandler("blacklist", blacklist))
 
-    app.run_polling()
+    await set_commands(app)  # Thiết lập các lệnh cho bot
 
-    app.start()
+    app.run_polling()
     app.updater.start_polling()
     app.updater.idle()
+
 
 if __name__ == '__main__':
     import asyncio
