@@ -62,7 +62,7 @@ async def news(update: Update, context: CallbackContext) -> None:
     news_message = "\n".join([item["title"] for item in data])
     await update.message.reply_html(news_message, disable_web_page_preview=True)
 
-# Hàm kiểm tra admin
+# Kiểm tra admin
 async def is_admin(update: Update, user_id: int) -> bool:
     chat_id = update.effective_chat.id
     member = await update.effective_chat.get_member(user_id)
@@ -76,11 +76,11 @@ async def random_keyword(update: Update, context: CallbackContext) -> None:
 
     if len(keywords) >= 2:
         selected_keyword = random.choice(keywords)
-        await update.message.reply_text(f'Từ khóa ngẫu nhiên được chọn từ câu hỏi của bạn: {selected_keyword}')
+        await update.message.reply_text(f'Kết quả random: {selected_keyword}')
     else:
         await update.message.reply_text('Vui lòng thêm ít nhất 2 từ khoá.')
 
-# Hàm thấy thông tin thời tiết
+# Hàm thời tiết
 def get_tt(location):
     api_key = "ca22122a90b399f9e1911fcb43763abd" 
     base_url = "http://api.openweathermap.org/data/2.5/weather?"
@@ -107,13 +107,13 @@ def get_city_name(code):
 async def weather(update: Update, context: CallbackContext) -> None:
     location_code = " ".join(context.args)
     if not location_code:
-        await update.message.reply_text("Vui lòng cung cấp mã vùng hoặc tên thành phố.")
+        await update.message.reply_text("Vui lòng cung cấp tên thành phố.")
         return
 
     location = get_city_name(location_code)
     weather_data = get_tt(location)
     if weather_data["cod"] == "404":
-        await update.message.reply_text(f"Không tìm thấy thông tin thời tiết cho địa điểm: {location}")
+        await update.message.reply_text(f"Không tìm thấy thông tin thời tiết cho: {location}")
         return
 
     main = weather_data["main"]
@@ -143,12 +143,12 @@ async def weather(update: Update, context: CallbackContext) -> None:
 
     weather_message = (
         f"Tại {location}:\n"
+        f"Mô tả: {weather_description}\n"
         f"Nhiệt độ trung bình {weather_icons['thermometer']}: {temp_avg:.2f}°C\n"
         f"Áp suất {weather_icons['barometer']}: {pressure} hPa\n"
         f"Độ ẩm {weather_icons['droplet']}: {humidity}%\n"
         f"Tốc độ gió {weather_icons['wind']}: {wind_speed} m/s\n"
         f"Tầm nhìn {weather_icons['visibility']}: {visibility_str}\n"
-        f"Mô tả: {weather_description}"
     )
 
     await update.message.reply_text(weather_message)
@@ -271,8 +271,6 @@ async def unban(update: Update, context: CallbackContext) -> None:
             await update.message.reply_text(f'Đã bỏ cấm thành viên @{username}.')
         except BadRequest as e:
             await update.message.reply_text(f'Không thể bỏ cấm thành viên: {e.message}')
-    else:
-        await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn bỏ cấm.')
 
 # Khởi tạo lệnh
 async def set_commands(application):
