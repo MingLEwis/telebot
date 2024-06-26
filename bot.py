@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
 import os
+import random
 
 nest_asyncio.apply()
 
@@ -67,6 +68,17 @@ async def is_admin(update: Update, user_id: int) -> bool:
     chat_id = update.effective_chat.id
     member = await update.effective_chat.get_member(user_id)
     return member.status in ['administrator', 'creator']
+
+async def random_keyword(update: Update, context: CallbackContext) -> None:
+    question = update.message.text.split("/random", 1)[1].strip()
+
+    keywords = [keyword.strip() for keyword in question.split(",")]
+
+    if keywords:
+        selected_keyword = random.choice(keywords)
+        await update.message.reply_text(f'Chúc mừng bạn đã quay vào: {selected_keyword}')
+    else:
+        await update.message.reply_text('Không tìm thấy từ khóa nào trong câu hỏi của bạn.')
 
 
 def get_tt(location):
@@ -253,6 +265,7 @@ async def set_commands(application):
         BotCommand("ban", "Cấm thành viên."),
         BotCommand("unban", "Bỏ cấm thành viên."),
         BotCommand("blacklist", "Blacklist iOS."),
+        BotCommand("random", "Chọn ngẫu nhiên một từ khóa.")
     ])
 
 async def main():
@@ -266,6 +279,7 @@ async def main():
     application.add_handler(CommandHandler("ban", ban))
     application.add_handler(CommandHandler("unban", unban))
     application.add_handler(CommandHandler("blacklist", blacklist))
+    application.add_handler(CommandHandler("random", random_keyword))
 
     await application.run_polling()
 
