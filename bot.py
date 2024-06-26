@@ -1,5 +1,6 @@
 from telegram import Update, ChatPermissions, BotCommand, Bot
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackContext, ContextTypes, MessageHandler
+from telegram.ext import CallbackContext
+from telegram.ext import ApplicationBuilder, CallbackContext, ContextTypes, MessageHandler
 from telegram.error import BadRequest
 from telegram.helpers import mention_html
 import logging
