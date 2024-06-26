@@ -70,7 +70,7 @@ async def is_admin(update: Update, user_id: int) -> bool:
 
 
 def get_tt(location):
-    api_key = "cae6fb4316e5d6d4516db4ddce333193"
+    api_key = "e5dadc5055f1ee253364ecec3662fcdb"
     base_url = "http://api.openweathermap.org/data/2.5/weather?"
     complete_url = base_url + "q=" + location + "&appid=" + api_key + "&units=metric&lang=vi"
     response = requests.get(complete_url)
