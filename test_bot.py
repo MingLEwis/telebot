@@ -1,6 +1,6 @@
 import pytest
-from unittest.mock import AsyncMock, MagicMock
-from telegram import Update, Message, User
+from unittest.mock import AsyncMock, MagicMock, patch
+from telegram import Update, Message, User, Chat
 from telegram.ext import CallbackContext
 from bot import start  # Đảm bảo import đúng hàm start từ tệp bot.py của bạn
 
@@ -9,18 +9,22 @@ async def test_start():
     # Tạo mock user
     user = User(id=123, first_name='Test', is_bot=False, username='testuser')
     
+    # Tạo mock chat
+    chat = Chat(id=1, type='private')
+
     # Tạo mock message
-    message = Message(message_id=1, date=None, chat=None, from_user=user, text="/start")
-    message.reply_text = AsyncMock()
-    
+    message = Message(message_id=1, date=None, chat=chat, from_user=user, text="/start")
+
     # Tạo mock update với message
     update = Update(update_id=123, message=message)
-    
+
     # Tạo mock context
     context = CallbackContext(dispatcher=None)
 
-    # Gọi hàm start
-    await start(update, context)
+    # Mock phương thức reply_text của message
+    with patch.object(Message, 'reply_text', new=AsyncMock()) as mock_reply:
+        # Gọi hàm start
+        await start(update, context)
 
-    # Kiểm tra rằng hàm reply_text đã được gọi với đúng tham số
-    message.reply_text.assert_called_once_with('Hi @testuser, tôi là bot Tiểu Ming rất vui được làm quen!')
+        # Kiểm tra rằng hàm reply_text đã được gọi với đúng tham số
+        mock_reply.assert_called_once_with('Hi @testuser, tôi là bot Tiểu Ming rất vui được làm quen!')
