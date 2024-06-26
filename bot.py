@@ -70,12 +70,11 @@ async def is_admin(update: Update, user_id: int) -> bool:
 
 
 def get_tt(location):
-    api_key = "ca22122a90b399f9e1911fcb43763abd"
+    api_key = "ca22122a90b399f9e1911fcb43763abd" 
     base_url = "http://api.openweathermap.org/data/2.5/weather?"
     complete_url = base_url + "q=" + location + "&appid=" + api_key + "&units=metric&lang=vi"
     response = requests.get(complete_url)
     return response.json()
-
 
 def get_city_name(code):
     cities = {
@@ -92,8 +91,7 @@ def get_city_name(code):
     }
     return cities.get(code.lower(), code)
 
-
-async def tt(update: Update, context: CallbackContext) -> None:
+async def weather(update, context):
     location_code = " ".join(context.args)
     if not location_code:
         await update.message.reply_text("Vui lòng cung cấp mã vùng hoặc tên thành phố.")
@@ -254,7 +252,7 @@ async def set_commands(application):
         BotCommand("unmute", "Bật tiếng thành viên."),
         BotCommand("ban", "Cấm thành viên."),
         BotCommand("unban", "Bỏ cấm thành viên."),
-        BotCommand("blacklist", "Thông tin về blacklist UDID."),
+        BotCommand("blacklist", "Blacklist iOS."),
     ])
 
 async def main():
