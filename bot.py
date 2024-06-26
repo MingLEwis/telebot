@@ -151,6 +151,7 @@ def extract_username(text):
         return match.group(1)
     return None
 
+
 async def unmute(update, context):
     user = update.effective_user
     if not await is_admin(update, user.id):
@@ -244,37 +245,25 @@ async def unban(update, context):
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn bỏ cấm.')
 
 
-async def set_commands(application):
-    await application.bot.set_my_commands([
-        BotCommand("start", "Bắt đầu sử dụng."),
-        BotCommand("news", "Tin tức mới."),
-        BotCommand("tt", "Thời tiết."),
-        BotCommand("mute", "Tắt tiếng thành viên."),
-        BotCommand("unmute", "Bật tiếng thành viên."),
-        BotCommand("ban", "Cấm thành viên."),
-        BotCommand("unban", "Bỏ cấm thành viên."),
-        BotCommand("blacklist", "Blacklist iOS."),
-    ])
+# Hàm chính để chạy bot
+async def main():
+    application = ApplicationBuilder().token('7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c').build()
 
-async def main() -> None:
-    app = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
+    application.add_handler(CommandHandler('start', start))
+    application.add_handler(CommandHandler('blacklist', blacklist))
+    application.add_handler(CommandHandler('news', news))
+    application.add_handler(CommandHandler('weather', weather))
+    application.add_handler(CommandHandler('mute', mute))
+    application.add_handler(CommandHandler('unmute', unmute))
+    application.add_handler(CommandHandler('ban', ban))
+    application.add_handler(CommandHandler('unban', unban))
 
-    # Đăng ký lệnh
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("mute", mute))
-    app.add_handler(CommandHandler("unmute", unmute))
-    app.add_handler(CommandHandler("ban", ban))
-    app.add_handler(CommandHandler("unban", unban))
-    app.add_handler(CommandHandler("news", news))
-    app.add_handler(CommandHandler("tt", weather))
-    app.add_handler(CommandHandler("blacklist", blacklist))
+    await application.run_polling()
 
-    await set_commands(app)  # Thiết lập các lệnh cho bot
 
-    app.run_polling()
-    app.updater.start_polling()
-    app.updater.idle()
-
+# Chạy bot mà không sử dụng asyncio.run để tránh lỗi vòng lặp sự kiện đã chạy
 if __name__ == '__main__':
     import asyncio
-    asyncio.run(main())
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
