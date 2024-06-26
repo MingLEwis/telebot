@@ -91,7 +91,7 @@ def get_city_name(code):
     }
     return cities.get(code.lower(), code)
 
-async def weather(update, context):
+async def weather(update: Update, context: CallbackContext) -> None:
     location_code = " ".join(context.args)
     if not location_code:
         await update.message.reply_text("Vui lòng cung cấp mã vùng hoặc tên thành phố.")
