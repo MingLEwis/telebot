@@ -1,5 +1,4 @@
-app.run()
-from telegram import Update, ChatPermissions, BotCommand, Bot
+from telegram import Update, ChatPermissions, BotCommand
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackContext, ContextTypes, MessageHandler
 from telegram.error import BadRequest
 from telegram.helpers import mention_html
@@ -8,6 +7,7 @@ import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
+import os
 
 logging.basicConfig(level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -17,14 +17,13 @@ logging.basicConfig(level=logging.DEBUG,
 
 logger = logging.getLogger(__name__)
 
-
 # Hàm khởi tạo lệnh /start
 async def start(update, context):
     user = update.message.from_user
     username = user.username if user.username else "Không có username"
-    await update.message.reply_text(f'Chào @{username}, tôi là bot Tiểu Ming rất vui được làm quen!')
+    await update.message.reply_text(f'Hi @{username}, tôi là bot Tiểu Ming rất vui được làm quen!')
 
-async def banudid(update, context):
+async def blacklist(update, context):
     await update.message.reply_text(
         'Thuật ngữ “ban udid” và “unban” xuất hiện vào khoảng năm 2020, nhưng trở nên phổ biến hơn gần đây.\n'
         'Chứng chỉ miễn phí là chứng chỉ doanh nghiệp, có thể bị rò rỉ hoặc mua từ chợ đen. Khi sử dụng, không cung cấp thông tin gì đến máy chủ Apple nên không bị cấm, chỉ khi thu hồi quá nhiều thì bị BLACKLIST.\n'
@@ -76,15 +75,14 @@ def get_city_name(code):
         "dl": "Da Lat",
         "bd": "Binh Duong",
         "nt": "Nha Trang",
-        "dt": "Dong Thap",
-        "pt": "Phan Thiet"
+        "pt": "Phan Thiet",
     }
     return cities.get(code.lower(), code)
 
 async def weather(update, context):
     location_code = " ".join(context.args)
     if not location_code:
-        await update.message.reply_text("Vui lòng cung cấp mã vùng hoặc tên thành phố. Ví dụ: /tt hcm")
+        await update.message.reply_text("Vui lòng cung cấp mã vùng hoặc tên thành phố.")
         return
 
     location = get_city_name(location_code)
@@ -208,7 +206,6 @@ async def ban(update, context):
             await update.message.reply_text(f'Không thể cấm thành viên: {e.message}')
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn cấm.')
-    
 
 # Hàm thực thi lệnh unban
 async def unban(update, context):
@@ -239,12 +236,11 @@ async def set_commands(application):
         BotCommand("unmute", "Bật tiếng thành viên."),
         BotCommand("ban", "Cấm thành viên."),
         BotCommand("unban", "Bỏ cấm thành viên."),
-        BotCommand("banudid", "Blacklist iOS.")
+        BotCommand("blacklist", "Blacklist iOS."),
     ])
-    
-def main() -> None:
 
-    app = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
+async def main() -> None:
+    app = ApplicationBuilder().token("YOUR_TELEGRAM_BOT_TOKEN").build()
 
     # Đăng ký lệnh
     app.add_handler(CommandHandler("start", start))
@@ -254,13 +250,10 @@ def main() -> None:
     app.add_handler(CommandHandler("unban", unban))
     app.add_handler(CommandHandler("news", news))
     app.add_handler(CommandHandler("tt", weather))
-    app.add_handler(CommandHandler("banudid", banudid))
+    app.add_handler(CommandHandler("blacklist", blacklist))
 
-    app.run_polling()
-
-    app.start()
-    app.updater.start_polling()
-    app.updater.idle()
+    await set_commands(app)
+    await app.run_polling()
 
 if __name__ == '__main__':
     import asyncio
