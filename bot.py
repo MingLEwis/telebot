@@ -1,15 +1,14 @@
-from telegram import Update, ChatPermissions, BotCommand
-from telegram.ext import CommandHandler, CallbackContext, MessageHandler
-from telegram.ext.filters import Filters
+from telegram.ext import CommandHandler, CallbackContext, MessageHandler, Filters
+from telegram import Update, ChatPermissions, BotCommand, Bot
+from telegram.ext import ApplicationBuilder, CallbackContext, ContextTypes, MessageHandler
 from telegram.error import BadRequest
 from telegram.helpers import mention_html
-from telegram.ext import ApplicationBuilder
-
 import logging
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
+import os
 
 logging.basicConfig(
     level=logging.DEBUG,
