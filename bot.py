@@ -1,7 +1,6 @@
-from telegram.ext import CommandHandler, CallbackContext, MessageHandler
-from telegram import Filters
+from telegram.ext import CommandHandler, CallbackContext, MessageHandler, filters
 from telegram import Update, ChatPermissions, BotCommand, Bot
-from telegram.ext import ApplicationBuilder, CallbackContext, ContextTypes, MessageHandler
+from telegram.ext import ApplicationBuilder
 from telegram.error import BadRequest
 from telegram.helpers import mention_html
 import logging
@@ -151,7 +150,6 @@ def extract_username(text):
     if match:
         return match.group(1)
     return None
-
 
 async def unmute(update, context):
     user = update.effective_user
