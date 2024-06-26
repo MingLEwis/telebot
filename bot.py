@@ -32,6 +32,7 @@ async def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
     username = user.username if user.username else "Không có username"
     await update.message.reply_text(f'Hi @{username}, tôi là bot Tiểu Ming rất vui được làm quen!')
+
 # Hàm blacklist
 async def blacklist(update: Update, context: CallbackContext) -> None:
     await update.message.reply_text(
@@ -75,11 +76,11 @@ async def random_keyword(update: Update, context: CallbackContext) -> None:
 
     if len(keywords) >= 2:
         selected_keyword = random.choice(keywords)
-        await update.message.reply_text(f'Kết quả random: {selected_keyword}')
+        await update.message.reply_text(f'Từ khóa ngẫu nhiên được chọn từ câu hỏi của bạn: {selected_keyword}')
     else:
         await update.message.reply_text('Vui lòng thêm ít nhất 2 từ khoá.')
 
-# Hàm lấy thông tin thời tiết
+# Hàm thấy thông tin thời tiết
 def get_tt(location):
     api_key = "ca22122a90b399f9e1911fcb43763abd" 
     base_url = "http://api.openweathermap.org/data/2.5/weather?"
@@ -99,6 +100,7 @@ def get_city_name(code):
         "bd": "Binh Duong",
         "nt": "Nha Trang",
         "pt": "Phan Thiet",
+        "hl": "Ha Long"
     }
     return cities.get(code.lower(), code)
 
@@ -110,23 +112,44 @@ async def weather(update: Update, context: CallbackContext) -> None:
 
     location = get_city_name(location_code)
     weather_data = get_tt(location)
-    if weather_data["cod"] != "404":
-        main = weather_data["main"]
-        weather = weather_data["weather"][0]
-        temperature = main["temp"]
-        pressure = main["pressure"]
-        humidity = main["humidity"]
-        weather_description = weather["description"]
+    if weather_data["cod"] == "404":
+        await update.message.reply_text(f"Không tìm thấy thông tin thời tiết cho địa điểm: {location}")
+        return
 
-        weather_message = (
-            f"Thời tiết tại {location}:\n"
-            f"Nhiệt độ: {temperature}°C\n"
-            f"Áp suất: {pressure} hPa\n"
-            f"Độ ẩm: {humidity}%\n"
-            f"Mô tả: {weather_description.capitalize()}"
-        )
+    main = weather_data["main"]
+    weather = weather_data["weather"][0]
+    temp_min = main["temp_min"]
+    temp_max = main["temp_max"]
+    temp_avg = (temp_min + temp_max) / 2  
+    pressure = main["pressure"]
+    humidity = main["humidity"]
+    wind_speed = weather_data["wind"]["speed"]
+    weather_description = weather["description"].capitalize()
+
+    visibility_meters = weather_data.get("visibility", "N/A")
+    if visibility_meters != "N/A":
+        visibility_kilometers = visibility_meters / 1000  
+        visibility_str = f"{visibility_kilometers:.2f} km"
     else:
-        weather_message = f"Không tìm thấy thông tin thời tiết cho địa điểm: {location}"
+        visibility_str = "N/A"
+
+    weather_icons = {
+        "thermometer": "🌡️", 
+        "barometer": "📊", 
+        "droplet": "💧", 
+        "wind": "🌬️",
+        "visibility": "👁️"
+    }
+
+    weather_message = (
+        f"Tại {location}:\n"
+        f"Nhiệt độ trung bình {weather_icons['thermometer']}: {temp_avg:.2f}°C\n"
+        f"Áp suất {weather_icons['barometer']}: {pressure} hPa\n"
+        f"Độ ẩm {weather_icons['droplet']}: {humidity}%\n"
+        f"Tốc độ gió {weather_icons['wind']}: {wind_speed} m/s\n"
+        f"Tầm nhìn {weather_icons['visibility']}: {visibility_str}\n"
+        f"Mô tả: {weather_description}"
+    )
 
     await update.message.reply_text(weather_message)
 
@@ -153,14 +176,6 @@ async def mute(update: Update, context: CallbackContext) -> None:
             await update.message.reply_text(f'Không thể tắt tiếng thành viên: {e.message}')
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn tắt tiếng.')
-
-
-def extract_username(text):
-    username_regex = r"@(\w+)"
-    match = re.search(username_regex, text)
-    if match:
-        return match.group(1)
-    return None
 
 # Hàm unmute
 async def unmute(update: Update, context: CallbackContext) -> None:
@@ -190,7 +205,7 @@ async def unmute(update: Update, context: CallbackContext) -> None:
         username = target_user.username
     else:
         await update.message.reply_text(
-            "Vui lòng trả lời tin nhắn của thành viên bạn muốn bật tiếng hoặc cung cấp @username hợp lệ."
+            "Vui lòng trả lời tin nhắn hoặc cung cấp @username của thành viên bạn muốn bật tiếng."
         )
         return
 
@@ -200,7 +215,6 @@ async def unmute(update: Update, context: CallbackContext) -> None:
             user_id=user_id,
             permissions=ChatPermissions(
                 can_send_messages=True,
-                can_send_media_messages=True,
                 can_send_polls=True,
                 can_send_other_messages=True,
                 can_add_web_page_previews=True,
@@ -212,6 +226,13 @@ async def unmute(update: Update, context: CallbackContext) -> None:
         await update.message.reply_text(f'Đã bỏ tắt tiếng thành viên @{username}')
     except Exception as e:
         await update.message.reply_text(f'Lỗi: {e}')
+
+def extract_username(text):
+    username_regex = r"@(\w+)"
+    match = re.search(username_regex, text)
+    if match:
+        return match.group(1)
+    return None
 
 # Hàm ban
 async def ban(update: Update, context: CallbackContext) -> None:
@@ -253,7 +274,7 @@ async def unban(update: Update, context: CallbackContext) -> None:
     else:
         await update.message.reply_text('Vui lòng trả lời tin nhắn của thành viên bạn muốn bỏ cấm.')
 
-# Hàm tạo lệnh
+# Khởi tạo lệnh
 async def set_commands(application):
     await application.bot.set_my_commands([
         BotCommand("start", "Bắt đầu sử dụng."),
@@ -269,7 +290,7 @@ async def set_commands(application):
 
 async def main():
     application = ApplicationBuilder().token("7416926704:AAFa4a34XuPaFijKTRNCapb75yyaRoUnf3c").build()
-# Hàm đăng ký lệnh
+# Đăng ký lệnh
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("news", news))
     application.add_handler(CommandHandler("tt", weather))
