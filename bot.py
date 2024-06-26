@@ -8,18 +8,6 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
 import os
-import pytest
-from bot import start
-
-@pytest.mark.asyncio
-async def test_start():
-    # Tạo mock update và context
-    update = Update(update_id=123, message=None)  # Thay thế None bằng đối tượng Message nếu cần thiết
-    context = CallbackContext(dispatcher=None)
-
-    # Gọi hàm start và kiểm tra kết quả
-    await start(update, context)
-    assert True
 
 logging.basicConfig(level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
