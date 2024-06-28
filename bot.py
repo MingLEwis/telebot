@@ -15,9 +15,6 @@ import json
 import os
 import requests
 import openai
-from openai import OpenAI, OpenAIError
-from openai.types import ChatModel
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 
 nest_asyncio.apply()
 
@@ -29,37 +26,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-client = OpenAI(
-    api_key=os.environ.get("OPENAI_API_KEY"),
-)
-
-# Hàm OpenAI
-async def response_chatGPT(query: str) -> str:
-    try:
-        messages = [
-            {"role": "system", "content": "You are assistant at IT School Online, helping user about service ASP."},
-            {"role": "user", "content": query}
-        ]
-        
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=messages
-        )
-        
-        response_message = response.choices[0].message['content']
-        return response_message
-    except OpenAIError as e:
-        return f"An error occurred: {str(e)}"
-
-# Hàm xử lý lệnh /ask
-async def ask_command(update: Update, context: CallbackContext):
-    if len(context.args) == 0:
-        await update.message.reply_text("Please provide a query after /ask command.")
-        return
-    
-    query = " ".join(context.args)
-    response = await response_chatGPT(query)
-    await update.message.reply_text(response)
 
 # Hàm start
 async def start(update: Update, context: CallbackContext) -> None:
