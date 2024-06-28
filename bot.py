@@ -312,7 +312,6 @@ async def set_commands(application):
         BotCommand("tt", "Thời tiết."),
         BotCommand("blacklist", "Blacklist iOS."),
         BotCommand("random", "Chọn ngẫu nhiên một từ khóa."),
-        BotCommand("ask", "Hỏi đáp.")
     ])
 
 async def main():
@@ -327,7 +326,6 @@ async def main():
     application.add_handler(CommandHandler("unban", unban))
     application.add_handler(CommandHandler("blacklist", blacklist))
     application.add_handler(CommandHandler("random", random_keyword))
-    application.add_handler(CommandHandler("ask", ask_command))
     application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, greet_new_member))
     application.add_handler(MessageHandler(filters.StatusUpdate.LEFT_CHAT_MEMBER, farewell_member))
 
