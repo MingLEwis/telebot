@@ -1,20 +1,23 @@
 import asyncio
 import nest_asyncio
 from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    ContextTypes,
-    CallbackContext,
+    ApplicationBuilder, CommandHandler, ContextTypes,
+    CallbackContext, MessageHandler, filters
 )
 from telegram import Update, ChatPermissions, BotCommand
 from telegram.error import BadRequest
 import logging
-import requests
+import random
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import re
+import json
 import os
-import random
+import requests
+import openai
+from openai import OpenAI, OpenAIError
+from openai.types import ChatModel
+from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessage
 
 nest_asyncio.apply()
 
@@ -24,14 +27,93 @@ logging.basicConfig(
     filename='app.log',
     filemode='a'
 )
-
 logger = logging.getLogger(__name__)
+
+client = OpenAI(
+    api_key=os.environ.get("OPENAI_API_KEY"),
+)
+
+# Hàm OpenAI
+async def response_chatGPT(query: str) -> str:
+    try:
+        messages = [
+            {"role": "system", "content": "You are assistant at IT School Online, helping user about service ASP."},
+            {"role": "user", "content": query}
+        ]
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=messages
+        )
+        
+        response_message = response.choices[0].message['content']
+        return response_message
+    except OpenAIError as e:
+        return f"An error occurred: {str(e)}"
+
+# Hàm xử lý lệnh /ask
+async def ask_command(update: Update, context: CallbackContext):
+    if len(context.args) == 0:
+        await update.message.reply_text("Please provide a query after /ask command.")
+        return
+    
+    query = " ".join(context.args)
+    response = await response_chatGPT(query)
+    await update.message.reply_text(response)
 
 # Hàm start
 async def start(update: Update, context: CallbackContext) -> None:
     user = update.message.from_user
-    username = user.username if user.username else "Không có username"
-    await update.message.reply_text(f'Hi @{username}, tôi là bot Tiểu Ming rất vui được làm quen!')
+    first_name = user.first_name if user.first_name else "Không có tên"
+    last_name = user.last_name if user.last_name else ""
+    full_name = f"{first_name} {last_name}".strip()
+
+    greetings = [
+        f"Hi {full_name}, rất vui được làm quen! 😈",
+        f"Yoh {full_name}, chào mừng bạn đến với bot của tôi! 🤖",
+        f"Hello {full_name}, hi vọng bạn có một ngày tuyệt vời! 🌟",
+        f"Chào {full_name}, hôm nay bạn thế nào? 😊",
+        f"Hây du, wáts súb {full_name}! 😁"
+    ]
+
+    greeting_message = random.choice(greetings)
+    await update.message.reply_text(greeting_message)
+
+# Hàm AT Chào mừng
+async def greet_new_member(update: Update, context: CallbackContext) -> None:
+    for member in update.message.new_chat_members:
+        first_name = member.first_name if member.first_name else "Không có tên"
+        last_name = member.last_name if member.last_name else ""
+        full_name = f"{first_name} {last_name}".strip()
+
+        greetings = [
+            f"Chào mừng {full_name} đến với nhóm! 😈",
+            f"Xin chào {full_name}, rất vui được gặp bạn! 🤗",
+            f"Hello {full_name}, chào mừng bạn tham gia! 🎉",
+            f"Chào {full_name}, hi vọng bạn có khoảng thời gian vui vẻ! 😊",
+            f"Hề lố, nai tu mít du {full_name}! 😁"
+        ]
+
+        greeting_message = random.choice(greetings)
+        await update.message.reply_text(greeting_message)
+
+# Hàm AT Tạm biệt
+async def farewell_member(update: Update, context: CallbackContext) -> None:
+    left_member = update.message.left_chat_member
+    first_name = left_member.first_name if left_member.first_name else "Không có tên"
+    last_name = left_member.last_name if left_member.last_name else ""
+    full_name = f"{first_name} {last_name}".strip()
+
+    farewells = [
+        f"Tạm biệt {full_name}, hẹn gặp lại! 👋",
+        f"{full_name} đã rời khỏi nhóm. Không tiễn! 🌈",
+        f"Bye {full_name}, hy vọng sẽ gặp lại! 🙌",
+        f"Rất tiếc khi phải nói lời tạm biệt, {full_name}. 😢",
+        f"{full_name} đã rời nhóm. Chúc may mắn! 🍀"
+    ]
+
+    farewell_message = random.choice(farewells)
+    await update.message.reply_text(farewell_message)
 
 # Hàm blacklist
 async def blacklist(update: Update, context: CallbackContext) -> None:
@@ -78,7 +160,7 @@ async def random_keyword(update: Update, context: CallbackContext) -> None:
         selected_keyword = random.choice(keywords)
         await update.message.reply_text(f'Kết quả random: {selected_keyword}')
     else:
-        await update.message.reply_text('Vui lòng thêm ít nhất 2 từ khoá.')
+        await update.message.reply_text('Thêm ít nhất 2 từ khoá.')
 
 # Hàm thời tiết
 def get_tt(location):
@@ -90,17 +172,9 @@ def get_tt(location):
 
 def get_city_name(code):
     cities = {
-        "hcm": "Ho Chi Minh City",
-        "hn": "Ha Noi",
-        "dn": "Da Nang",
-        "ct": "Can Tho",
-        "hp": "Hai Phong",
-        "vt": "Vung Tau",
-        "dl": "Da Lat",
-        "bd": "Binh Duong",
-        "nt": "Nha Trang",
-        "pt": "Phan Thiet",
-        "hl": "Ha Long"
+        "hcm": "Ho Chi Minh City", "hn": "Ha Noi", "dn": "Da Nang", "ct": "Can Tho",
+        "hp": "Hai Phong", "vt": "Vung Tau", "dl": "Da Lat", "bd": "Binh Duong",
+        "nt": "Nha Trang", "pt": "Phan Thiet", "hl": "Ha Long"
     }
     return cities.get(code.lower(), code)
 
@@ -134,11 +208,7 @@ async def weather(update: Update, context: CallbackContext) -> None:
         visibility_str = "N/A"
 
     weather_icons = {
-        "thermometer": "🌡️", 
-        "barometer": "📊", 
-        "droplet": "💧", 
-        "wind": "🌬️",
-        "visibility": "👁️"
+        "thermometer": "🌡️", "barometer": "📊", "droplet": "💧", "wind": "🌬️", "visibility": "👁️"
     }
 
     weather_message = (
@@ -157,7 +227,7 @@ async def weather(update: Update, context: CallbackContext) -> None:
 async def mute(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
-        await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
+        await update.message.reply_text('Bộ mày là ADMIN hả? 😏')
         return
 
     if update.message.reply_to_message:
@@ -181,7 +251,7 @@ async def mute(update: Update, context: CallbackContext) -> None:
 async def unmute(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
-        await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
+        await update.message.reply_text('Bộ mày là ADMIN hay gì? 🤔')
         return
 
     chat_id = update.message.chat_id
@@ -213,14 +283,10 @@ async def unmute(update: Update, context: CallbackContext) -> None:
         await context.bot.restrict_chat_member(
             chat_id=chat_id,
             user_id=user_id,
-            permissions=ChatPermissions(
-                can_send_messages=True,
-                can_send_polls=True,
-                can_send_other_messages=True,
-                can_add_web_page_previews=True,
-                can_change_info=True,
-                can_invite_users=True,
-                can_pin_messages=True
+            permissions=ChatPermissions(can_send_messages=True,
+            can_send_polls=True, can_send_other_messages=True,
+            can_add_web_page_previews=True, can_change_info=True,
+            can_invite_users=True, can_pin_messages=True
             )
         )
         await update.message.reply_text(f'Đã bỏ tắt tiếng thành viên @{username}')
@@ -238,7 +304,7 @@ def extract_username(text):
 async def ban(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
-        await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
+        await update.message.reply_text('Bộ mày là ADMIN hả? 😏')
         return
 
     if update.message.reply_to_message:
@@ -258,7 +324,7 @@ async def ban(update: Update, context: CallbackContext) -> None:
 async def unban(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
     if not await is_admin(update, user.id):
-        await update.message.reply_text('Bạn cần quyền admin để thực hiện lệnh này.')
+        await update.message.reply_text('Bộ mày là ADMIN hay gì? 🤔')
         return
 
     if update.message.reply_to_message:
@@ -275,15 +341,12 @@ async def unban(update: Update, context: CallbackContext) -> None:
 # Khởi tạo lệnh
 async def set_commands(application):
     await application.bot.set_my_commands([
-        BotCommand("start", "Bắt đầu sử dụng."),
+        BotCommand("start", "Thử chào hỏi thôi."),
         BotCommand("news", "Tin tức mới."),
         BotCommand("tt", "Thời tiết."),
-        BotCommand("mute", "Tắt tiếng thành viên."),
-        BotCommand("unmute", "Bật tiếng thành viên."),
-        BotCommand("ban", "Cấm thành viên."),
-        BotCommand("unban", "Bỏ cấm thành viên."),
         BotCommand("blacklist", "Blacklist iOS."),
-        BotCommand("random", "Chọn ngẫu nhiên một từ khóa.")
+        BotCommand("random", "Chọn ngẫu nhiên một từ khóa."),
+        BotCommand("ask", "Hỏi đáp.")
     ])
 
 async def main():
@@ -298,7 +361,11 @@ async def main():
     application.add_handler(CommandHandler("unban", unban))
     application.add_handler(CommandHandler("blacklist", blacklist))
     application.add_handler(CommandHandler("random", random_keyword))
+    application.add_handler(CommandHandler("ask", ask_command))
+    application.add_handler(MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, greet_new_member))
+    application.add_handler(MessageHandler(filters.StatusUpdate.LEFT_CHAT_MEMBER, farewell_member))
 
+    await set_commands(application)
     await application.run_polling()
 
 if __name__ == '__main__':
